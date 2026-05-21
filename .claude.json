@@ -1,0 +1,16 @@
+{
+  "allowedTools": [
+    "Apollo.io:apollo_mixed_people_api_search",
+    "Apollo.io:apollo_contacts_search",
+    "Apollo.io:apollo_people_bulk_match",
+    "Apollo.io:apollo_users_api_profile",
+    "Clay:find-and-enrich-contacts-at-company",
+    "Clay:find-and-enrich-list-of-contacts",
+    "Clay:get-credits-available",
+    "Clay:run_subroutine",
+    "Vibe Prospecting:fetch-entities",
+    "web_search",
+    "bash",
+    "bash_tool"
+  ]
+}
