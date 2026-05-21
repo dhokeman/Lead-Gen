@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Apollo-io__apollo_mixed_people_api_search",
+      "mcp__Apollo-io__apollo_contacts_search",
+      "mcp__Apollo-io__apollo_people_bulk_match",
+      "mcp__Apollo-io__apollo_people_match",
+      "mcp__Apollo-io__apollo_contacts_create",
+      "mcp__Apollo-io__apollo_contacts_update",
+      "mcp__Apollo-io__apollo_organizations_enrich",
+      "mcp__Apollo-io__apollo_organizations_bulk_enrich",
+      "mcp__Apollo-io__apollo_mixed_companies_search",
+      "mcp__Apollo-io__apollo_users_api_profile",
+      "mcp__Apollo-io__apollo_email_accounts_index",
+      "mcp__Apollo-io__apollo_emailer_campaigns_search",
+      "mcp__Clay__find-and-enrich-contacts-at-company",
+      "mcp__Clay__find-and-enrich-list-of-contacts",
+      "mcp__Clay__find-and-enrich-company",
+      "mcp__Clay__add-contact-data-points",
+      "mcp__Clay__add-company-data-points",
+      "mcp__Clay__query-objects",
+      "mcp__Clay__run_subroutine",
+      "mcp__Clay__run_subroutine_direct",
+      "mcp__Clay__get-credits-available",
+      "mcp__Clay__get-task",
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file",
+      "mcp__github__list_branches",
+      "mcp__github__list_commits",
+      "mcp__github__get_file_contents",
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "WebSearch",
+      "WebFetch"
+    ]
+  }
+}
