@@ -5,5 +5,8 @@
       "mcp__Apollo-io__*",
       "mcp__Clay__*"
     ]
+  },
+  "env": {
+    "APOLLO_API_KEY": "YFJdPRNup8pQZWU_3QqpJw"
   }
 }
