@@ -1,0 +1,28 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "permissions": {
+        "allow": [
+            "Skill",
+            "mcp__Apollo-io__apollo_mixed_people_api_search",
+            "mcp__Apollo-io__apollo_contacts_search",
+            "mcp__Apollo-io__apollo_people_bulk_match",
+            "mcp__Apollo-io__apollo_users_api_profile",
+            "mcp__Apollo-io__apollo_organizations_enrich",
+            "mcp__Apollo-io__apollo_organizations_bulk_enrich",
+            "mcp__Apollo-io__apollo_mixed_companies_search",
+            "mcp__Apollo-io__apollo_emailer_campaigns_search",
+            "mcp__Apollo-io__apollo_analytics_sync_report",
+            "mcp__Clay__find-and-enrich-list-of-contacts",
+            "mcp__Clay__find-and-enrich-contacts-at-company",
+            "mcp__Clay__find-and-enrich-company",
+            "mcp__Clay__get-credits-available",
+            "mcp__Clay__query-objects",
+            "mcp__Clay__run_subroutine",
+            "mcp__Clay__get-task",
+            "mcp__Clay__get-task-context",
+            "mcp__Clay__add-contact-data-points",
+            "mcp__Clay__add-company-data-points",
+            "mcp__Clay__ask-question-about-accounts"
+        ]
+    }
+}
