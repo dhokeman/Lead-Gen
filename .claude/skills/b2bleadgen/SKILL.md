@@ -55,15 +55,30 @@ Only include contacts with these titles:
 
 ## 5-Step Workflow
 
-### Step 1 — Deduplication (Blacklist Extraction)
-If the user uploads a CSV tracker file:
+### Step 0 — Repo Blacklist Auto-Load (MANDATORY, runs every time)
+
+**Before any discovery, always load the full historical blacklist from the repository.** Do not skip this step even if the user says nothing about duplicates.
+
+1. Use `mcp__github__get_file_contents` to list the root of `ipvcore26-svg/lead-gen` (default branch + feature branch `claude/zealous-newton-9b49w`).
+2. Find every file matching `leads_*.csv` in the repo root.
+3. For each file found, fetch its contents and extract:
+   - All values in the `"Partner Name"` column → lowercase, stripped → add to `repo_blacklist_names[]`
+   - All values in the `"Company / Firm"` column → lowercase, stripped → add to `repo_blacklist_companies[]`
+4. Merge with any names/companies generated **earlier in this conversation session** into a single **master blacklist**.
+5. Log the blacklist size before proceeding: e.g. `"Blacklist loaded: 12 names, 10 companies from repo + session."`
+
+> ⛔ This step is non-optional. If the GitHub tool call fails, warn the user and halt — do not proceed with discovery until the blacklist is confirmed.
+
+---
+
+### Step 1 — User-Provided CRM Deduplication (if applicable)
+If the user also uploads or references a CRM/tracker CSV file:
 1. Read it using `bash_tool` with `python3` and `pandas` (use `encoding='latin1'` for robustness; try `header=3` if default columns are unnamed)
 2. Extract **all unique company names** from `"Company / Firm"` column → lowercase, stripped
 3. Extract **all unique partner names** from `"Partner Name"` column → lowercase, stripped
-4. Also blacklist any companies or names from **previously generated leads in this conversation**
-5. Store the combined list as the **master blacklist** — no lead from this session may match any entry
+4. Merge into the **master blacklist** (additive — do not replace Step 0 entries)
 
-> ⚠️ Never output a lead whose company OR person already exists in the blacklist. Check both.
+> ⚠️ Never output a lead whose company OR person already exists in the master blacklist. Check both fields independently.
 
 ---
 
@@ -173,21 +188,25 @@ When the user specifies a city, inject it into Apollo's `person_locations` param
 3. **Mandatory digital presence check**: Verify every company has (a) a functional website and (b) an active LinkedIn company page before including — no exceptions
 4. **Cap per-company leads** at 2 contacts maximum (to avoid over-indexing one firm)
 5. **Reject** leads with seniority below the gate (e.g., Analysts, Associates, Relationship Managers)
-6. **Blacklist check is mandatory** — run it before outputting even a single row
-7. ~~Professional Tenure Bar~~ — **REMOVED**: Do not filter based on years of experience
-8. ~~Education Bar~~ — **REMOVED**: Do not filter based on degree type or institution tier
+6. **Pre-output blacklist gate (non-negotiable)**: Immediately before writing each row to the final CSV, check BOTH `Partner Name` AND `Company / Firm` against the master blacklist (Step 0 + Step 1 + session). If either field matches → silently drop the row and continue to the next candidate. Never output a duplicate row.
+7. **Append new leads to session blacklist**: After outputting, add every `Partner Name` and `Company / Firm` from the batch to `session_blacklist_names[]` and `session_blacklist_companies[]` so subsequent requests in the same session are also deduplicated.
+8. **After output, append to repo CSV**: Save the new leads by appending rows to the relevant `leads_*.csv` file in the repo (or create a new dated file) and commit. This ensures the next session's Step 0 load picks them up automatically.
+9. ~~Professional Tenure Bar~~ — **REMOVED**: Do not filter based on years of experience
+10. ~~Education Bar~~ — **REMOVED**: Do not filter based on degree type or institution tier
 
 ---
 
 ## Conversation Memory
 
 Track the following across the full session:
-- `session_blacklist_companies[]` — grows with every generated batch
-- `session_blacklist_names[]` — grows with every generated batch
+- `session_blacklist_companies[]` — seeded from repo CSV (Step 0) at session start, then grows with every generated batch
+- `session_blacklist_names[]` — seeded from repo CSV (Step 0) at session start, then grows with every generated batch
 - `city_filter` — last user-specified city (persist until changed)
 - `total_leads_generated` — running count
 
-When the user says "give me more" or "don't overlap", automatically apply the full session blacklist without asking.
+**The session blacklist is always active** — do not wait for the user to say "no overlap". It applies automatically on every run.
+
+When the user says "give me more" or "don't overlap", confirm the current blacklist size to the user (e.g. "Excluding 14 previously seen names and 12 companies") before running discovery.
 
 ---
 
