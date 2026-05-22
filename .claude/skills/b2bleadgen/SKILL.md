@@ -153,6 +153,62 @@ After the CSV:
 
 ---
 
+### Step 6 — Apollo Sequence Enrollment (MANDATORY, runs after every batch)
+
+After saving leads to the repo CSV, enroll every new lead into an Apollo sequence. Do not skip this step and do not terminate before completing it.
+
+#### 6a — Identify the Sequence
+1. Call `Apollo.io:apollo_emailer_campaigns_search` to find available sequences.
+   - If the user specified a sequence name, pass it as `q_name`.
+   - If the user did not specify one, search without a filter and show all active sequences to the user.
+2. **If multiple sequences match**, list them all with their names and IDs and ask the user to pick one — never guess.
+3. Record the confirmed sequence `id` (24-char hex).
+
+#### 6b — Get Sender Email Account
+1. Call `Apollo.io:apollo_email_accounts_index` to retrieve valid sender email accounts.
+2. If only one account exists, use it. If multiple exist, list them and ask the user which to send from.
+3. Record the confirmed `send_email_from_email_account_id`.
+
+#### 6c — Ensure Contacts Exist in Apollo
+For each lead in the current batch:
+1. Call `Apollo.io:apollo_contacts_search` with `q_keywords: "<Partner Name> <Company / Firm>"` to check if the contact already exists.
+2. If found → record their Apollo `id`.
+3. If not found → call `Apollo.io:apollo_contacts_bulk_create` (preferred) or `Apollo.io:apollo_contacts_create` with `run_dedupe: true` to create the contact. Fields to populate:
+   - `first_name`, `last_name` (split from Partner Name)
+   - `title` (Designation)
+   - `organization_name` (Company / Firm)
+   - `email` (strip emoji quality flag before passing)
+   - `direct_phone` (if not N/A)
+   - `website_url` (Company Website)
+   - `present_raw_address` (City + ", India")
+4. Record the returned Apollo `id` for each contact.
+
+#### 6d — Confirm with User Before Enrolling
+Present a confirmation summary **before** calling the add endpoint:
+```
+Ready to enroll N contacts into sequence "<Sequence Name>":
+  Sender: <email address>
+  Contacts: <list of Partner Name — Company / Firm>
+Proceed? (yes/no)
+```
+Wait for explicit user confirmation. Do not enroll without it.
+
+#### 6e — Enroll Contacts
+After confirmation, call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` with:
+- `id` and `emailer_campaign_id` — both set to the sequence ID from 6a
+- `contact_ids` — array of real Apollo contact IDs from 6c (24-char hex strings only; never use placeholders)
+- `send_email_from_email_account_id` — from 6b
+- `status: "active"`
+
+#### 6f — Report and Terminate
+After the API call returns, report:
+- How many contacts were successfully enrolled
+- Any contacts that failed (and why, if the API gives a reason)
+
+Then terminate. Do not proceed to any further discovery.
+
+---
+
 ## Location Targeting
 
 When the user specifies a city, inject it into Apollo's `person_locations` param:
@@ -215,8 +271,13 @@ When the user says "give me more" or "don't overlap", confirm the current blackl
 | Tool | Purpose |
 |---|---|
 | `Apollo.io:apollo_mixed_people_api_search` | Primary contact discovery |
-| `Apollo.io:apollo_contacts_search` | Supplemental search |
+| `Apollo.io:apollo_contacts_search` | Check if contact already exists in Apollo DB |
+| `Apollo.io:apollo_contacts_bulk_create` | Create new contacts in Apollo DB (preferred) |
+| `Apollo.io:apollo_contacts_create` | Create single contact in Apollo DB (fallback) |
 | `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment |
+| `Apollo.io:apollo_emailer_campaigns_search` | Find target sequence by name/ID |
+| `Apollo.io:apollo_email_accounts_index` | Get valid sender email account IDs |
+| `Apollo.io:apollo_emailer_campaigns_add_contact_ids` | Enroll contacts into sequence |
 | `Clay:find-and-enrich-contacts-at-company` | Phone number enrichment |
 | `Clay:find-and-enrich-list-of-contacts` | Batch contact enrichment |
 | `Vibe Prospecting:fetch-entities` | Company-level discovery |
