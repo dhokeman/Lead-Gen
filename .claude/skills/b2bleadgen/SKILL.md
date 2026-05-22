@@ -4,8 +4,8 @@ description: >
   B2B Lead Generation for IPV. Finds Indian IWM, AMC, MFO, PMS, and Boutique
   Wealth Advisory firms via Apollo, Google Search, Google Maps, LinkedIn, SEBI
   registries, and company websites. Identifies senior decision-makers (Founder,
-  CEO, MD, CIO, Managing Partner), enriches phone numbers via Apollo first then
-  Clay (no email searching), deduplicates against all prior leads CSVs in the
+  CEO, MD, CIO, Managing Partner), enriches email addresses via Apollo first then
+  Clay (no phone number searching), deduplicates against all prior leads CSVs in the
   repo AND an uploaded CRM CSV, outputs a clean leads CSV, and automatically
   enrolls every lead into the "IPV Ultra – B2B Wealth Manager Partnership
   Outreach" Apollo sequence via jai.chachani@ipventures.in — no user approval
@@ -23,7 +23,7 @@ description: >
 
 This skill automates the full B2B lead generation pipeline for **Inflection Point Ventures (IPV)**. It discovers net-new Indian financial services partners across IWM, AMC, MFO, PMS, and Boutique Wealth Advisory categories using **six parallel discovery sources**, enriches phone numbers via Apollo then Clay, and outputs a clean deduplicated CSV — then auto-enrolls every lead into the fixed Apollo sequence.
 
-**Email searching is disabled.** Do not attempt to find, pattern-match, or verify email addresses at any point.
+**Phone number searching is disabled.** Do not attempt to find or retrieve phone numbers via Apollo, Clay, or any other source at any point.
 
 ---
 
@@ -220,22 +220,25 @@ For companies discovered via Sources B–F (not already surfaced with contacts b
 For each identified contact (from all sources), call `Apollo.io:apollo_people_match` using the Apollo person ID or name + organization to retrieve:
 - Full name (unmasked)
 - Title
-- Direct phone / mobile number
+- Work email address (`email` field, `email_status` field)
 - LinkedIn URL
 - City
 
-**Do not request or use the email fields** — pass `reveal_personal_emails: false` (default).
+**Do not request, read, or store any phone number fields.** Ignore `phone_numbers`, `sanitized_phone`, `direct_dial_status` in the response entirely.
 
 Store the `person.contact.id` (24-char hex) from each result — required for Step 5 enrollment.
+Store the `person.email` and `person.email_status` for the output CSV.
 
-#### 3c — Clay phone enrichment (for contacts with no Apollo phone)
+#### 3c — Clay email enrichment (for contacts with no Apollo email)
 
-For any contact where Apollo returned no phone number, call `Clay:find-and-enrich-contacts-at-company` or `Clay:find-and-enrich-list-of-contacts` to retrieve:
-- Direct mobile / office phone number only
+For any contact where Apollo returned no email (or `email_status` is `unavailable`), call `Clay:find-and-enrich-contacts-at-company` or `Clay:find-and-enrich-list-of-contacts` to retrieve:
+- Work email address only
 
-If Clay also returns no phone → mark phone as `N/A`. Never fabricate.
+**Do not request or use phone fields from Clay responses.**
 
-For bulk batches (50+ contacts), use `Apollo.io:apollo_people_bulk_match` or `Clay:run_subroutine` for batch enrichment.
+If Clay also returns no email → mark email as `N/A`. Never fabricate.
+
+For bulk batches (50+ contacts), use `Apollo.io:apollo_people_bulk_match` or `Clay:run_subroutine` for batch email enrichment.
 
 ---
 
@@ -251,10 +254,12 @@ Apply final quality checks, then format all confirmed leads as a CSV.
 
 **CSV headers (exact):**
 ```
-Partner Name,Designation,Company / Firm,Phone,LinkedIn,Company Website,Discovery Source,Source Category,City
+Partner Name,Designation,Company / Firm,Email,LinkedIn,Company Website,Discovery Source,Source Category,City
 ```
 
-> Note: Email column is intentionally omitted. Discovery Source records which of the 6 sources first surfaced this company (e.g., "Apollo", "Google Search", "LinkedIn", "SEBI Registry", "Google Maps", "Web Directory").
+> Email is populated from Apollo `person.email` (Step 3b) or Clay fallback (Step 3c). Mark as `N/A` if neither returns one — never fabricate.
+> Discovery Source records which of the 6 sources first surfaced this company (e.g., "Apollo", "Google Search", "LinkedIn", "SEBI Registry", "Google Maps", "Web Directory").
+> Phone column is intentionally omitted — phone numbers are not searched for.
 
 Output inside a fenced code block. No trailing commas. No empty rows.
 
@@ -284,7 +289,7 @@ Select the account whose email matches `jai.chachani@ipventures.in`. Store its `
 Call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` with:
 - `id` = `TARGET_SEQUENCE_ID`
 - `emailer_campaign_id` = `TARGET_SEQUENCE_ID`
-- `contact_ids` = list of `person.contact.id` values collected in Step 3b (exact 24-char hex from this session only — never use placeholders or IDs from memory)
+- `contact_ids` = list of `person.contact.id` values collected in Step 3b during Apollo enrichment (exact 24-char hex from this session only — never use placeholders or IDs from memory)
 - `send_email_from_email_account_id` = `SENDER_ACCOUNT_ID`
 - `status` = `"active"`
 
@@ -325,8 +330,8 @@ When the user specifies a city, inject it into all discovery sources:
 ## Quality Control Rules
 
 1. **Hard sector exclusions**: Never output a lead from Insurance Advisory, Real Estate, Portfolio Management Apps/Retail Advisory, hospitality, or lending-only NBFCs — regardless of title
-2. **No email searching**: Do not attempt to find, pattern-match, infer, or verify email addresses at any step
-3. **Never fabricate** phone numbers or LinkedIn URLs — mark as `N/A` if not found
+2. **No phone number searching**: Do not attempt to find, request, or store phone numbers via Apollo, Clay, or any other source at any step
+3. **Never fabricate** email addresses or LinkedIn URLs — mark as `N/A` if not found
 4. **Mandatory digital presence check**: Every company must have a functional website AND active LinkedIn page — no exceptions
 5. **Cap per-company leads** at 2 contacts maximum
 6. **Reject** leads with seniority below the gate (Analysts, Associates, Relationship Managers)
@@ -358,9 +363,9 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 | `Apollo.io:apollo_emailer_campaigns_search` | Resolve sequence ID (Step 5) |
 | `Apollo.io:apollo_email_accounts_index` | Resolve sender account ID (Step 5) |
 | `Apollo.io:apollo_emailer_campaigns_add_contact_ids` | Enroll contacts into sequence (Step 5) |
-| `Clay:find-and-enrich-contacts-at-company` | Phone enrichment fallback (Step 3c) |
-| `Clay:find-and-enrich-list-of-contacts` | Batch phone enrichment fallback |
-| `Clay:run_subroutine` | Bulk Clay enrichment |
+| `Clay:find-and-enrich-contacts-at-company` | Email enrichment fallback (Step 3c) |
+| `Clay:find-and-enrich-list-of-contacts` | Batch email enrichment fallback |
+| `Clay:run_subroutine` | Bulk Clay email enrichment |
 | `WebSearch` | Google Search (Source B), Google Maps (Source C), LinkedIn (Source D), directories (Source F) |
 | `WebFetch` | Fetch LinkedIn company pages, SEBI/AMFI registry pages, company websites (Sources D, E, F) |
 
@@ -369,10 +374,10 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 ## Output Format (exact CSV headers)
 
 ```csv
-Partner Name,Designation,Company / Firm,Phone,LinkedIn,Company Website,Discovery Source,Source Category,City
+Partner Name,Designation,Company / Firm,Email,LinkedIn,Company Website,Discovery Source,Source Category,City
 ```
 
-Always output inside a fenced code block. No trailing commas. No empty rows. Email column intentionally absent.
+Always output inside a fenced code block. No trailing commas. No empty rows. Phone column intentionally absent.
 
 ---
 
