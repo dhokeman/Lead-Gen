@@ -105,15 +105,9 @@ filters: company_country_code=IN, has_email=true, has_website=true, linkedin_cat
 
 ---
 
-### Step 3 — Phone Number Enrichment (Clay)
+### Step 3 — ~~Phone Number Enrichment~~ (DISABLED)
 
-For each confirmed clean lead, run `Clay:find-and-enrich-contacts-at-company` or `Clay:find-and-enrich-list-of-contacts` to retrieve:
-- Direct mobile / office phone number
-- Verify email if not already confirmed
-
-If Clay returns no phone, mark the phone field as `N/A` — never fabricate.
-
-For bulk batches (50+ leads), use `Apollo.io:apollo_people_bulk_match` or `Clay:run_subroutine` for batch phone enrichment.
+**Do NOT fetch phone numbers.** Skip all Clay and Apollo phone enrichment calls entirely. The `Phone` column must be left blank (`N/A`) for every lead — never attempt to retrieve it via `Clay:find-and-enrich-contacts-at-company`, `Clay:find-and-enrich-list-of-contacts`, or `Apollo.io:apollo_people_bulk_match`. This step is a no-op.
 
 ---
 
@@ -134,8 +128,10 @@ For each lead:
 Format all confirmed leads as a CSV block with **exactly these headers**:
 
 ```
-Partner Name, Designation, Company / Firm, Email, Phone, LinkedIn, Company Website, Source Category, City
+Partner Name, Designation, Company / Firm, Email, LinkedIn, Company Website, Source Category, City
 ```
+
+> `Phone` column is removed from output. Do not include it.
 
 After the CSV:
 - Add a **Quality Legend** (🟢/🟡/🟠 email signals)
@@ -163,8 +159,8 @@ When the user specifies a city, inject it into Apollo's `person_locations` param
 
 | Requested Leads | Apollo Pages | Clay Enrichment |
 |---|---|---|
-| 1–15 | 1–2 pages | Single-call enrichment |
-| 16–50 | 3–5 pages | Batch enrichment |
+| 1–15 | 1–2 pages | Email-only enrichment |
+| 16–50 | 3–5 pages | Email-only batch enrichment |
 | 51–110 | 5–8 pages across 2 keyword sets | Bulk match via Clay/Apollo |
 | 110+ | Suggest splitting into city batches | Bulk with rate-limit awareness |
 
@@ -203,9 +199,9 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 |---|---|
 | `Apollo.io:apollo_mixed_people_api_search` | Primary contact discovery |
 | `Apollo.io:apollo_contacts_search` | Supplemental search |
-| `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment |
-| `Clay:find-and-enrich-contacts-at-company` | Phone number enrichment |
-| `Clay:find-and-enrich-list-of-contacts` | Batch contact enrichment |
+| `Apollo.io:apollo_people_bulk_match` | Bulk email enrichment only (no phone) |
+| `Clay:find-and-enrich-contacts-at-company` | Email verification only (no phone) |
+| `Clay:find-and-enrich-list-of-contacts` | Batch email enrichment only (no phone) |
 | `Vibe Prospecting:fetch-entities` | Company-level discovery |
 | `web_search` | Email verification, LinkedIn cross-check |
 
@@ -216,7 +212,7 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 ## Output Format (exact CSV headers)
 
 ```csv
-Partner Name,Designation,Company / Firm,Email,Phone,LinkedIn,Company Website,Source Category,City
+Partner Name,Designation,Company / Firm,Email,LinkedIn,Company Website,Source Category,City
 ```
 
 Always output inside a fenced code block. No trailing commas. No empty rows.
