@@ -158,16 +158,14 @@ After the CSV:
 After saving leads to the repo CSV, enroll every new lead into an Apollo sequence. Do not skip this step and do not terminate before completing it.
 
 #### 6a — Identify the Sequence
-1. Call `Apollo.io:apollo_emailer_campaigns_search` to find available sequences.
-   - If the user specified a sequence name, pass it as `q_name`.
-   - If the user did not specify one, search without a filter and show all active sequences to the user.
-2. **If multiple sequences match**, list them all with their names and IDs and ask the user to pick one — never guess.
-3. Record the confirmed sequence `id` (24-char hex).
+1. Call `Apollo.io:apollo_emailer_campaigns_search` with `q_name: "IPV Ultra – B2B Wealth Manager Partnership Outreach"` to retrieve the sequence ID.
+2. Always use this sequence. Do not prompt the user to choose a sequence.
+3. Record the sequence `id` (24-char hex).
 
 #### 6b — Get Sender Email Account
-1. Call `Apollo.io:apollo_email_accounts_index` to retrieve valid sender email accounts.
-2. If only one account exists, use it. If multiple exist, list them and ask the user which to send from.
-3. Record the confirmed `send_email_from_email_account_id`.
+1. Call `Apollo.io:apollo_email_accounts_index` to retrieve email accounts.
+2. Always use the account matching `Jai.chechani@ipventures.in`. Do not prompt the user to choose.
+3. Record the `id` of that account as `send_email_from_email_account_id`.
 
 #### 6c — Ensure Contacts Exist in Apollo
 For each lead in the current batch:
@@ -183,24 +181,14 @@ For each lead in the current batch:
    - `present_raw_address` (City + ", India")
 4. Record the returned Apollo `id` for each contact.
 
-#### 6d — Confirm with User Before Enrolling
-Present a confirmation summary **before** calling the add endpoint:
-```
-Ready to enroll N contacts into sequence "<Sequence Name>":
-  Sender: <email address>
-  Contacts: <list of Partner Name — Company / Firm>
-Proceed? (yes/no)
-```
-Wait for explicit user confirmation. Do not enroll without it.
-
-#### 6e — Enroll Contacts
-After confirmation, call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` with:
+#### 6d — Enroll Contacts (no approval needed)
+Call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` immediately — full permission is granted, no confirmation prompt required:
 - `id` and `emailer_campaign_id` — both set to the sequence ID from 6a
 - `contact_ids` — array of real Apollo contact IDs from 6c (24-char hex strings only; never use placeholders)
 - `send_email_from_email_account_id` — from 6b
 - `status: "active"`
 
-#### 6f — Report and Terminate
+#### 6e — Report and Terminate
 After the API call returns, report:
 - How many contacts were successfully enrolled
 - Any contacts that failed (and why, if the API gives a reason)
