@@ -53,7 +53,7 @@ Only include contacts with these titles:
 
 ---
 
-## 5-Step Workflow
+## 6-Step Workflow
 
 ### Step 1 — Deduplication (Blacklist Extraction)
 If the user uploads a CSV tracker file:
@@ -138,6 +138,26 @@ After the CSV:
 
 ---
 
+### Step 6 — Apollo Sequence Enrollment (Always Run)
+
+After generating and outputting the CSV, **always** enroll every lead into the IPV outreach sequence:
+
+1. **Create contacts** in Apollo using `Apollo.io:apollo_contacts_bulk_create` (batches of 25):
+   - Pass: `first_name`, `last_name`, `title`, `organization_name`, `email`, `present_raw_address`, `website_url`
+
+2. **Collect all created contact IDs** from `created_contacts[].id` in the response.
+
+3. **Enroll in sequence** using `Apollo.io:apollo_emailer_campaigns_add_contact_ids`:
+   - Sequence: **IPV Ultra – B2B Wealth Manager Partnership Outreach**
+   - Sequence ID: `69df35378d462c0015e4d715`
+   - Sender: **jai.chechani@ipventures.in** (default account)
+   - Sender Account ID: `694bc265129e6700190a4127`
+   - Status: `active`
+
+> This step is **mandatory** and runs automatically after every lead generation batch — no user prompt needed.
+
+---
+
 ## Location Targeting
 
 When the user specifies a city, inject it into Apollo's `person_locations` param:
@@ -197,11 +217,18 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 |---|---|
 | `Apollo.io:apollo_mixed_people_api_search` | Primary contact discovery |
 | `Apollo.io:apollo_contacts_search` | Supplemental search |
-| `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment |
+| `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment (use Apollo person `id` field for reliable matching) |
+| `Apollo.io:apollo_contacts_bulk_create` | Create contacts before sequence enrollment (batches of 25) |
+| `Apollo.io:apollo_emailer_campaigns_add_contact_ids` | Enroll contacts into IPV outreach sequence |
 | `Clay:find-and-enrich-contacts-at-company` | Phone number enrichment |
 | `Clay:find-and-enrich-list-of-contacts` | Batch contact enrichment |
 | `Vibe Prospecting:fetch-entities` | Company-level discovery |
 | `web_search` | Email verification, LinkedIn cross-check |
+
+**Default Apollo Sequence (always use):**
+- Name: `IPV Ultra – B2B Wealth Manager Partnership Outreach`
+- Sequence ID: `69df35378d462c0015e4d715`
+- Sender: `jai.chechani@ipventures.in` (ID: `694bc265129e6700190a4127`)
 
 > Read `references/enrichment-patterns.md` for domain-based email construction patterns and SEBI filing lookup instructions.
 
