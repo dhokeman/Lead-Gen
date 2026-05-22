@@ -5,7 +5,9 @@ description: >
   Wealth Advisory firms, identifies senior decision-makers (Founder, CEO, MD,
   CIO, Managing Partner), enriches emails and phone numbers via Apollo and Clay,
   deduplicates against all prior leads CSVs in the repo AND an uploaded CRM CSV,
-  outputs a clean leads CSV, and enrolls every lead into an Apollo sequence.
+  outputs a clean leads CSV, and automatically enrolls every lead into the
+  "IPV Ultra – B2B Wealth Manager Partnership Outreach" Apollo sequence via
+  jai.chachani@ipventures.in — no user approval required at any step.
   ALWAYS trigger on: /b2bleadgen, "find new B2B leads", "give me X leads",
   "don't overlap with previous", "Bangalore/Mumbai/Delhi leads", "add phone
   numbers", "wealth management leads for IPV", "MFO/PMS/IWM leads India",
@@ -169,43 +171,40 @@ After the CSV:
 
 ---
 
-### Step 6 — Apollo Sequence Enrollment (Mandatory)
+### Step 6 — Apollo Sequence Enrollment (Mandatory, Fully Automatic)
 
-**Every confirmed lead must be enrolled in an Apollo sequence. Do not skip this step.**
+**Every confirmed lead must be enrolled in the fixed sequence below. Do not skip this step. Do not ask the user for any approval — run enrollment immediately after Step 5.**
 
-#### 6a — Find the target sequence
-Call `Apollo.io:apollo_emailer_campaigns_search` to list available sequences.
-- If only one sequence exists → present it to the user for confirmation before enrolling.
-- If multiple sequences match → list **all** of them with their names and IDs, then ask the user which one to use. Never pick one automatically.
+**Fixed configuration (never change these without explicit instruction):**
+- **Sequence name**: `IPV Ultra – B2B Wealth Manager Partnership Outreach`
+- **Sender email**: `jai.chachani@ipventures.in`
 
-#### 6b — Get sender email account
-Call `Apollo.io:apollo_email_accounts_index` to retrieve valid sender accounts.
-- Present the sender address to the user along with the sequence name and contact count.
-- Never fabricate or guess a `send_email_from_email_account_id`.
+#### 6a — Resolve the sequence ID
+Call `Apollo.io:apollo_emailer_campaigns_search` with `q_name = "IPV Ultra"`.
+- Select the result whose name exactly matches `IPV Ultra – B2B Wealth Manager Partnership Outreach`.
+- Store its `id` as `TARGET_SEQUENCE_ID`. Do not prompt the user.
 
-#### 6c — Confirm with user before enrolling
-Present a confirmation summary:
-```
-Sequence:  <sequence name>
-Sender:    <sender email address>
-Contacts:  <N> contacts — <list of names>
-Status:    active
-```
-Wait for explicit user confirmation. Do **not** enroll without it.
+#### 6b — Resolve the sender email account ID
+Call `Apollo.io:apollo_email_accounts_index`.
+- Select the account whose email matches `jai.chachani@ipventures.in`.
+- Store its `id` as `SENDER_ACCOUNT_ID`. Do not prompt the user.
 
-#### 6d — Enroll contacts
-After confirmation, call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` using:
-- `id` and `emailer_campaign_id` = the confirmed sequence ID (exact 24-char hex from the search result)
-- `contact_ids` = the Apollo contact IDs returned by `apollo_people_match` in Step 3 (field: `person.contact.id`)
-- `send_email_from_email_account_id` = the ID from Step 6b
+#### 6c — Enroll contacts immediately
+Call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` with:
+- `id` = `TARGET_SEQUENCE_ID`
+- `emailer_campaign_id` = `TARGET_SEQUENCE_ID`
+- `contact_ids` = list of Apollo contact IDs from the enrichment results in Step 3 (field: `person.contact.id` — exact 24-char hex strings from this session only)
+- `send_email_from_email_account_id` = `SENDER_ACCOUNT_ID`
 - `status` = `"active"`
 
-> ⚠️ `contact_ids` must be real 24-character hex IDs from the enrichment tool results in this session — never use placeholders or IDs from memory.
+> ⚠️ `contact_ids` must be real 24-character hex IDs returned by `apollo_people_match` in this session. Never use placeholders or IDs from memory or prior sessions.
 
-#### 6e — Confirm enrollment
-After the API call, report back:
-- How many contacts were successfully enrolled
-- Any contacts that failed enrollment and why (e.g., already in sequence, no email)
+#### 6d — Report enrollment result
+After the API call, output a one-line summary:
+```
+✅ Enrolled N contacts into "IPV Ultra – B2B Wealth Manager Partnership Outreach" via jai.chachani@ipventures.in
+   Failed: <name> — <reason>   (only if any failed)
+```
 
 ---
 
