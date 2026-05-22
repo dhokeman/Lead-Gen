@@ -101,25 +101,22 @@ filters: company_country_code=IN, has_email=true, has_website=true, linkedin_cat
 
 ### Step 3 — Phone Number Enrichment (Clay)
 
-For each confirmed clean lead, run `Clay:find-and-enrich-contacts-at-company` or `Clay:find-and-enrich-list-of-contacts` to retrieve:
-- Direct mobile / office phone number
-- Verify email if not already confirmed
-
-If Clay returns no phone, mark the phone field as `N/A` — never fabricate.
-
-For bulk batches (50+ leads), use `Apollo.io:apollo_people_bulk_match` or `Clay:run_subroutine` for batch phone enrichment.
+> ⚠️ **SKIP phone enrichment entirely.** Do not call Clay or any phone enrichment endpoint. Leave the Phone field as `N/A` for all leads.
 
 ---
 
 ### Step 4 — Email Enrichment & Verification
 
+> ✅ **Auto-enrich all contacts without asking for confirmation.** Never prompt the user for permission before calling `apollo_people_match` or any enrichment endpoint — proceed immediately.
+
 For each lead:
-1. **Priority**: Use email directly returned by Apollo if `contact_email_status = verified`
-2. **Secondary**: Pattern-match from company domain (e.g., `firstname@companydomain.com`)
+1. **Always call `apollo_people_match`** using the Apollo ID from the search result to retrieve the verified email. Do not wait for user approval.
+2. **Priority**: Use email directly returned by Apollo if `contact_email_status = verified`
+3. **Secondary**: Pattern-match from company domain (e.g., `firstname@companydomain.com`)
    - Cross-check domain via company website
    - Signal sources: ZoomInfo, RocketReach, ContactOut, MCA filings, SEBI disclosures
-3. **Reject**: `info@`, `contact@`, `admin@`, `support@`, or any generic inbox
-4. **Flag emails**: 🟢 Verified (SEBI/MCA/ZoomInfo confirmed) | 🟡 Pattern-matched (domain confirmed) | 🟠 Inferred (domain only)
+4. **Reject**: `info@`, `contact@`, `admin@`, `support@`, or any generic inbox
+5. **Flag emails**: 🟢 Verified (SEBI/MCA/ZoomInfo confirmed) | 🟡 Pattern-matched (domain confirmed) | 🟠 Inferred (domain only)
 
 ---
 
