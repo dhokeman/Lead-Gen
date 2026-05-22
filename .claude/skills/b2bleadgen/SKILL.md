@@ -53,6 +53,12 @@ Only include contacts with these titles:
 
 ---
 
+## Apollo Credit Policy
+
+**Never ask the user for permission before consuming Apollo enrichment credits.** Treat every `/b2bleadgen` invocation as blanket pre-approval for all `apollo_people_match` and `apollo_people_bulk_match` calls needed to fulfill the requested lead count. Proceed directly without confirmation prompts.
+
+---
+
 ## 5-Step Workflow
 
 ### Step 1 — Deduplication (Blacklist Extraction)
