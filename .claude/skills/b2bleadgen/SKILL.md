@@ -56,14 +56,18 @@ Only include contacts with these titles:
 ## 5-Step Workflow
 
 ### Step 1 — Deduplication (Blacklist Extraction)
-If the user uploads a CSV tracker file:
-1. Read it using `bash_tool` with `python3` and `pandas` (use `encoding='latin1'` for robustness; try `header=3` if default columns are unnamed)
-2. Extract **all unique company names** from `"Company / Firm"` column → lowercase, stripped
-3. Extract **all unique partner names** from `"Partner Name"` column → lowercase, stripped
-4. Also blacklist any companies or names from **previously generated leads in this conversation**
-5. Store the combined list as the **master blacklist** — no lead from this session may match any entry
+
+**MANDATORY — always run this step before any search, even if the user provides no CSV.**
+
+1. **Always** read `leads_2026-05-22.csv` from the repo root using `python3` (`encoding='utf-8'`). Extract:
+   - All unique **company names** from the `"Company / Firm"` column → lowercase, stripped
+   - All unique **partner names** from the `"Partner Name"` column → lowercase, stripped
+2. If the user also uploads a separate CSV tracker file, additionally read it (`encoding='latin1'`; try `header=3` if default columns are unnamed) and extract company names from `"Company / Firm"` and partner names from `"Partner Name"`.
+3. Also blacklist any companies or names from **previously generated leads in this conversation**.
+4. Merge all three sources into the **master blacklist** — no lead from this session may match any entry.
 
 > ⚠️ Never output a lead whose company OR person already exists in the blacklist. Check both.
+> ⚠️ The `leads_2026-05-22.csv` check is non-negotiable — run it on every invocation.
 
 ---
 
@@ -136,6 +140,39 @@ After the CSV:
 - Add a **Coverage Summary** by Source Category count
 - Add a short **IPV Fit Note** for 3–5 standout leads
 
+Then immediately proceed to **Step 6** without waiting for the user.
+
+---
+
+### Step 6 — Persist to Master File & Enroll in Apollo Sequence
+
+Run both sub-steps automatically after every successful lead generation batch:
+
+#### 6a — Append to Master Leads File
+Append all net-new leads (not duplicates) to `leads_2026-05-22.csv` in the repo root using `python3`:
+```python
+import csv
+
+new_leads = [...]  # list of dicts with the 9 standard headers
+
+headers = ['Partner Name','Designation','Company / Firm','Email','Phone','LinkedIn','Company Website','Source Category','City']
+
+with open('leads_2026-05-22.csv', 'a', newline='', encoding='utf-8') as f:
+    writer = csv.DictWriter(f, fieldnames=headers)
+    writer.writerows(new_leads)
+```
+Then `git add leads_2026-05-22.csv && git commit -m "Add N enriched leads – <date>"` and push to the current branch.
+
+#### 6b — Enroll in Apollo Sequence
+For every net-new lead that has a verified email:
+1. Call `Apollo.io:apollo_emailer_campaigns_search` to find the active IPV campaign (search keyword: `"IPV"` or `"B2B Wealth"`).
+2. Call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` with the Apollo contact ID(s) from the enrichment step.
+3. If no Apollo contact ID is available, skip sequence enrollment for that lead and note it in the output summary.
+4. Report a per-lead enrollment status: ✅ Enrolled / ⚠️ No ID / ❌ Error.
+
+> ⚠️ Never enroll a lead that was skipped as a duplicate — blacklist check in Step 1 is the gate.
+> ⚠️ If `apollo_emailer_campaigns_add_contact_ids` fails for a lead, log the error and continue — do not abort the batch.
+
 ---
 
 ## Location Targeting
@@ -197,13 +234,17 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 |---|---|
 | `Apollo.io:apollo_mixed_people_api_search` | Primary contact discovery |
 | `Apollo.io:apollo_contacts_search` | Supplemental search |
+| `Apollo.io:apollo_people_match` | Single-contact full enrichment (email + phone) |
 | `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment |
+| `Apollo.io:apollo_emailer_campaigns_search` | Find active IPV Apollo sequences |
+| `Apollo.io:apollo_emailer_campaigns_add_contact_ids` | Enroll leads into sequence (Step 6b) |
 | `Clay:find-and-enrich-contacts-at-company` | Phone number enrichment |
 | `Clay:find-and-enrich-list-of-contacts` | Batch contact enrichment |
 | `Vibe Prospecting:fetch-entities` | Company-level discovery |
 | `web_search` | Email verification, LinkedIn cross-check |
 
 > Read `references/enrichment-patterns.md` for domain-based email construction patterns and SEBI filing lookup instructions.
+> **Master dedup file**: `leads_2026-05-22.csv` in repo root — always read in Step 1, always append in Step 6a.
 
 ---
 
