@@ -4,7 +4,8 @@ description: >
   B2B Lead Generation for IPV. Finds Indian IWM, AMC, MFO, PMS, and Boutique
   Wealth Advisory firms, identifies senior decision-makers (Founder, CEO, MD,
   CIO, Managing Partner), enriches emails and phone numbers via Apollo and Clay,
-  deduplicates against an uploaded CRM CSV, and outputs a clean leads CSV.
+  deduplicates against all prior leads CSVs in the repo AND an uploaded CRM CSV,
+  outputs a clean leads CSV, and enrolls every lead into an Apollo sequence.
   ALWAYS trigger on: /b2bleadgen, "find new B2B leads", "give me X leads",
   "don't overlap with previous", "Bangalore/Mumbai/Delhi leads", "add phone
   numbers", "wealth management leads for IPV", "MFO/PMS/IWM leads India",
@@ -53,17 +54,47 @@ Only include contacts with these titles:
 
 ---
 
-## 5-Step Workflow
+## 6-Step Workflow
 
 ### Step 1 — Deduplication (Blacklist Extraction)
-If the user uploads a CSV tracker file:
-1. Read it using `bash_tool` with `python3` and `pandas` (use `encoding='latin1'` for robustness; try `header=3` if default columns are unnamed)
+
+**This step is mandatory on every run — even when no CRM CSV is uploaded.**
+
+#### 1a — Scan all previously generated leads CSVs in the repo
+Run this every time before searching Apollo:
+```bash
+python3 - <<'EOF'
+import glob, pandas as pd, json
+
+blacklist_companies, blacklist_names = set(), set()
+
+# Scan every leads_output_*.csv in the working directory
+for f in glob.glob("leads_output_*.csv") + glob.glob("leads_*.csv"):
+    try:
+        df = pd.read_csv(f, encoding='latin1')
+        if "Company / Firm" in df.columns:
+            blacklist_companies.update(df["Company / Firm"].dropna().str.lower().str.strip())
+        if "Partner Name" in df.columns:
+            blacklist_names.update(df["Partner Name"].dropna().str.lower().str.strip())
+    except Exception as e:
+        print(f"Warning: could not read {f}: {e}")
+
+print(json.dumps({"companies": sorted(blacklist_companies), "names": sorted(blacklist_names)}))
+EOF
+```
+Any name or company found → added to the **master blacklist** immediately.
+
+#### 1b — Scan uploaded CRM tracker (if provided)
+If the user uploads a CRM tracker CSV:
+1. Read it using `python3` and `pandas` (use `encoding='latin1'`; try `header=3` if default columns are unnamed)
 2. Extract **all unique company names** from `"Company / Firm"` column → lowercase, stripped
 3. Extract **all unique partner names** from `"Partner Name"` column → lowercase, stripped
-4. Also blacklist any companies or names from **previously generated leads in this conversation**
-5. Store the combined list as the **master blacklist** — no lead from this session may match any entry
+4. Merge into the master blacklist
 
-> ⚠️ Never output a lead whose company OR person already exists in the blacklist. Check both.
+#### 1c — Session memory blacklist
+Also blacklist any companies or names from **leads generated earlier in this conversation** (even if not yet saved to a CSV).
+
+> ⚠️ Never output a lead whose company OR person already exists in the master blacklist. Check both fields. A contact like "Mitesh Shah" or a firm like "Equirus Family Office" found in any prior output CSV must be rejected immediately.
 
 ---
 
@@ -138,6 +169,46 @@ After the CSV:
 
 ---
 
+### Step 6 — Apollo Sequence Enrollment (Mandatory)
+
+**Every confirmed lead must be enrolled in an Apollo sequence. Do not skip this step.**
+
+#### 6a — Find the target sequence
+Call `Apollo.io:apollo_emailer_campaigns_search` to list available sequences.
+- If only one sequence exists → present it to the user for confirmation before enrolling.
+- If multiple sequences match → list **all** of them with their names and IDs, then ask the user which one to use. Never pick one automatically.
+
+#### 6b — Get sender email account
+Call `Apollo.io:apollo_email_accounts_index` to retrieve valid sender accounts.
+- Present the sender address to the user along with the sequence name and contact count.
+- Never fabricate or guess a `send_email_from_email_account_id`.
+
+#### 6c — Confirm with user before enrolling
+Present a confirmation summary:
+```
+Sequence:  <sequence name>
+Sender:    <sender email address>
+Contacts:  <N> contacts — <list of names>
+Status:    active
+```
+Wait for explicit user confirmation. Do **not** enroll without it.
+
+#### 6d — Enroll contacts
+After confirmation, call `Apollo.io:apollo_emailer_campaigns_add_contact_ids` using:
+- `id` and `emailer_campaign_id` = the confirmed sequence ID (exact 24-char hex from the search result)
+- `contact_ids` = the Apollo contact IDs returned by `apollo_people_match` in Step 3 (field: `person.contact.id`)
+- `send_email_from_email_account_id` = the ID from Step 6b
+- `status` = `"active"`
+
+> ⚠️ `contact_ids` must be real 24-character hex IDs from the enrichment tool results in this session — never use placeholders or IDs from memory.
+
+#### 6e — Confirm enrollment
+After the API call, report back:
+- How many contacts were successfully enrolled
+- Any contacts that failed enrollment and why (e.g., already in sequence, no email)
+
+---
+
 ## Location Targeting
 
 When the user specifies a city, inject it into Apollo's `person_locations` param:
@@ -198,6 +269,9 @@ When the user says "give me more" or "don't overlap", automatically apply the fu
 | `Apollo.io:apollo_mixed_people_api_search` | Primary contact discovery |
 | `Apollo.io:apollo_contacts_search` | Supplemental search |
 | `Apollo.io:apollo_people_bulk_match` | Bulk phone/email enrichment |
+| `Apollo.io:apollo_emailer_campaigns_search` | Find Apollo sequences (Step 6) |
+| `Apollo.io:apollo_email_accounts_index` | Get sender email account ID (Step 6) |
+| `Apollo.io:apollo_emailer_campaigns_add_contact_ids` | Enroll leads into sequence (Step 6) |
 | `Clay:find-and-enrich-contacts-at-company` | Phone number enrichment |
 | `Clay:find-and-enrich-list-of-contacts` | Batch contact enrichment |
 | `Vibe Prospecting:fetch-entities` | Company-level discovery |
