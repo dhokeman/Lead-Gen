@@ -69,6 +69,18 @@ Only include contacts with these titles:
 > ⚠️ Never output a lead whose company OR person already exists in the blacklist. Check both.
 > ⚠️ The `leads_2026-05-22.csv` check is non-negotiable — run it on every invocation.
 
+MANDATORY: Run a git pull origin main to ensure the local repo is up to date.
+Read the master tracker file using python3. You MUST wrap this in a try/except block. If the file cannot be read, halt the entire routine and notify the user. Do not proceed to Step 2.
+
+Extract the following into your master blacklist:
+
+All unique Emails (exact match).
+
+All unique Company Domains (strip https://, www., and trailing slashes).
+
+All unique LinkedIn URLs.
+
+When checking new leads from Apollo, check against these three unique identifiers. Never rely solely on the person's name or company name for deduplication.
 ---
 
 ### Step 2 — Company & Contact Discovery
@@ -162,6 +174,14 @@ with open('leads_2026-05-22.csv', 'a', newline='', encoding='utf-8') as f:
     writer.writerows(new_leads)
 ```
 Then `git add leads_2026-05-22.csv && git commit -m "Add N enriched leads – <date>"` and push to the current branch.
+
+6a — Append to Master Leads File & Push
+Append new leads via Python. After appending, execute:
+git add 
+git commit -m "Add N enriched leads"
+git push origin main
+
+CRITICAL: You must verify the console output of the git push command. If the push fails (e.g., authentication error, non-fast-forward), you must report the exact git error to the user and stop. Do not claim success if the push did not go through.
 
 #### 6b — Enroll in Apollo Sequence
 For every net-new lead that has a verified email:
